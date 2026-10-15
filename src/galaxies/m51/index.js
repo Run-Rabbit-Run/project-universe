@@ -16,164 +16,77 @@ const onArm = (k, r, inner = 0) => {
   return toWorld(p.x, p.y);
 };
 
+// Свечение балджа и спутника; слои частиц и срезы диска — общие, из DEFAULT_SCENE.
+const SCENE = {
+  disk: { warp, dustStrength: 2.0 },
+  occluder: { center: [0, 0, 0], radius: 5 },
+  billboards: [
+    {
+      center: [0, 0, 0],
+      radius: 8,
+      vis: [0.95, 0.74, 0.5],
+      ir: [0.45, 0.6, 1.0],
+      ha: [0.06, 0.05, 0.05],
+      x: [0.8, 0.62, 1.2],
+      core: 0.04,
+      halo: 0.22,
+      intensity: 0.55,
+    },
+    {
+      center: COMPANION,
+      radius: 14,
+      vis: [0.9, 0.68, 0.45],
+      ir: [0.4, 0.52, 0.9],
+      ha: [0.05, 0.04, 0.04],
+      x: [0.7, 0.55, 1.1],
+      core: 0.05,
+      halo: 0.27,
+      lumpy: 0.4,
+      intensity: 1.35,
+    },
+  ],
+};
+
+// Если хостинг не даёт запустить Web Worker, считаем в основном потоке — дольше, но работает.
+function generate({ quality, textureSize }) {
+  const inPage = () => import('./generate.js').then((m) => m.generateM51({ quality, textureSize }));
+  return new Promise((resolve) => {
+    let worker;
+    try {
+      worker = new Worker(new URL('./generate.worker.js', import.meta.url), { type: 'module' });
+    } catch {
+      resolve(inPage());
+      return;
+    }
+    worker.onmessage = (e) => {
+      resolve(e.data);
+      worker.terminate();
+    };
+    worker.onerror = (e) => {
+      e.preventDefault();
+      worker.terminate();
+      resolve(inPage());
+    };
+    worker.postMessage({ quality, textureSize });
+  });
+}
+
 export default {
   id: 'm51',
   catalog: 'M51 · NGC 5194',
   name: 'Водоворот',
   constellation: 'Гончие Псы',
+  distance: { ly: 27e6, label: '23–31 млн св. лет' },
+  loading: 'Собираем звёзды Водоворота',
   lede: 'Первая галактика, в которой люди увидели спираль. От Земли — 23–31 млн световых лет.',
+  bands: ['visible', 'infrared', 'halpha', 'xray', 'rosse'],
 
-  load({ quality, textureSize }) {
-    // Если хостинг не даёт запустить Web Worker, считаем в основном потоке — дольше, но работает.
-    const inPage = () => import('./generate.js').then((m) => m.generateM51({ quality, textureSize }));
-    return new Promise((resolve) => {
-      let worker;
-      try {
-        worker = new Worker(new URL('./generate.worker.js', import.meta.url), { type: 'module' });
-      } catch {
-        resolve(inPage());
-        return;
-      }
-      worker.onmessage = (e) => {
-        resolve(e.data);
-        worker.terminate();
-      };
-      worker.onerror = (e) => {
-        e.preventDefault();
-        worker.terminate();
-        resolve(inPage());
-      };
-      worker.postMessage({ quality, textureSize });
-    });
+  load(opts) {
+    // У Водоворота один изогнутый диск; движок ждёт список дисков
+    return generate(opts).then((r) => ({ ...r, disks: [{ ...r.disk, warp: true }] }));
   },
 
-  // Порядок отрисовки важен: пыль гасит то, что нарисовано до неё.
-  scene: {
-    order: { diskLight: 1, diskDust: 4 },
-    disk: {
-      warp,
-      dustStrength: 2.0,
-      light: [
-        { y: -0.35, weight: 0.25 },
-        { y: 0, weight: 0.5 },
-        { y: 0.35, weight: 0.25 },
-      ],
-      dust: [
-        { y: -0.06, weight: 0.55 },
-        { y: 0.06, weight: 0.55 },
-      ],
-    },
-    layers: [
-      {
-        name: 'glow',
-        source: 'glow',
-        order: 1.5,
-        ir: [0.4, 0.55, 1.0],
-        ha: [0.15, 0.15, 0.15],
-        minPx: 2,
-        maxPx: 900,
-        soft: 2.4,
-        facing: -1,
-      },
-      {
-        name: 'old',
-        source: 'old',
-        order: 2,
-        intensity: 0.75,
-        ir: [0.4, 0.58, 1.0],
-        ha: [0.32, 0.3, 0.3],
-        minPx: 1.4,
-        maxPx: 5,
-        soft: 4.5,
-      },
-      {
-        name: 'dustAbsorb',
-        source: 'dust',
-        order: 5,
-        absorb: true,
-        nebula: 0.8,
-        ha: [1.5, 1.7, 2.0],
-        minPx: 2,
-        maxPx: 900,
-        soft: 2.2,
-        facing: -1,
-      },
-      {
-        name: 'dustGlow',
-        source: 'dust',
-        order: 6,
-        vis: [0, 0, 0],
-        ir: [5.0, 1.6, 0.45],
-        minPx: 2,
-        maxPx: 900,
-        soft: 2.2,
-        facing: -1,
-      },
-      {
-        name: 'young',
-        source: 'young',
-        order: 7,
-        intensity: 0.55,
-        ir: [0.35, 0.5, 1.0],
-        ha: [0.25, 0.24, 0.24],
-        minPx: 1.4,
-        maxPx: 6,
-        soft: 4.5,
-      },
-      {
-        name: 'hii',
-        source: 'hii',
-        order: 8,
-        intensity: 0.5,
-        ir: [1.8, 1.15, 0.6],
-        ha: [5.0, 0.55, 0.9],
-        minPx: 1.8,
-        maxPx: 900,
-        soft: 3.6,
-        nebula: 1,
-      },
-      {
-        name: 'xray',
-        source: 'xray',
-        order: 9,
-        vis: [0, 0, 0],
-        x: [1, 1, 1],
-        xFromColor: 1,
-        minPx: 1.8,
-        maxPx: 900,
-        soft: 3,
-      },
-    ],
-    billboards: [
-      {
-        name: 'bulge',
-        center: [0, 0, 0],
-        radius: 8,
-        vis: [0.95, 0.74, 0.5],
-        ir: [0.45, 0.6, 1.0],
-        ha: [0.06, 0.05, 0.05],
-        x: [0.8, 0.62, 1.2],
-        core: 0.04,
-        halo: 0.22,
-        intensity: 0.55,
-        order: 3,
-      },
-      {
-        name: 'companion',
-        center: COMPANION,
-        radius: 14,
-        vis: [0.9, 0.68, 0.45],
-        ir: [0.4, 0.52, 0.9],
-        ha: [0.05, 0.04, 0.04],
-        x: [0.7, 0.55, 1.1],
-        core: 0.05,
-        halo: 0.27,
-        lumpy: 0.4,
-        intensity: 1.35,
-        order: 3,
-      },
-    ],
-  },
+  scene: SCENE,
 
   views: {
     earth: { label: 'Вид с Земли', target: [-2, 0, -5], fit: 35, fitX: 28, phi: 20 * DEG, theta: 0 },

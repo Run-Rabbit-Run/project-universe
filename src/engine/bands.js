@@ -1,7 +1,9 @@
 // Фильтры колеса: в каком свете смотреть на галактику.
-// weights — вклад видимого, инфракрасного, Hα и рентгеновского диапазонов; sketch — режим «1845».
+// weights — вклад видимого, инфракрасного, Hα и рентгеновского диапазонов;
+// sketch — исторический режим поверх кадра, style — его вид (0 — карандаш, 1 — фотопластинка).
+// Галактика сама выбирает, какие фильтры стоят в её колесе (поле bands в модуле галактики).
 
-export const BANDS = [
+const LIBRARY = [
   {
     id: 'visible',
     short: 'Видимый',
@@ -56,5 +58,26 @@ export const BANDS = [
     glass: 'radial-gradient(circle at 35% 30%, #fbf6ea 0%, #d9cdb2 55%, #6f6656 100%)',
     weights: [1, 0, 0, 0],
     sketch: 1,
+    style: 0,
+  },
+  {
+    id: 'roberts',
+    short: '1888',
+    title: 'Фотопластинка Робертса',
+    range: 'Синечувствительная эмульсия',
+    instrument: '20-дюймовый рефлектор, Англия',
+    text: 'Айзек Робертс снимал Андромеду с выдержкой в несколько часов. На его пластинке впервые проступили витки «туманности» — тогда ещё никто не знал, что это целая галактика.',
+    glass: 'radial-gradient(circle at 35% 30%, #f2efe8 0%, #8f8a80 55%, #1c1b19 100%)',
+    weights: [1, 0, 0, 0],
+    sketch: 1,
+    style: 1,
   },
 ];
+
+export const BANDS = Object.fromEntries(LIBRARY.map((b) => [b.id, b]));
+
+// Набор фильтров для галактики; подписи можно уточнить под конкретный объект (bandNotes).
+export function bandsFor(galaxy) {
+  const ids = galaxy.bands ?? ['visible', 'infrared', 'halpha', 'xray'];
+  return ids.map((id) => ({ ...BANDS[id], text: galaxy.bandNotes?.[id] ?? BANDS[id].text }));
+}

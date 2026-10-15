@@ -133,12 +133,31 @@ button {
   align-items: center;
   gap: 10px;
   margin: 0 0 18px;
+  padding: 6px 10px 6px 0;
+  pointer-events: auto;
+  border-radius: 3px;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--plate-dim);
   transition: color var(--fade);
+}
+
+.brand__more {
+  margin-left: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  color: var(--plate);
+  transition:
+    border-color 0.2s,
+    color var(--fade);
+}
+
+.brand:hover .brand__more,
+.brand[aria-expanded='true'] .brand__more {
+  border-color: var(--plate-faint);
 }
 
 .brand__dot {
@@ -155,8 +174,9 @@ button {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 300;
-  font-size: clamp(60px, 8.6vw, 136px);
+  font-size: clamp(40px, min(8.6vw, calc(var(--fit, 136) * 1px)), 136px);
   line-height: 0.86;
+  overflow-wrap: anywhere;
   letter-spacing: -0.015em;
   color: var(--plate);
   transition: color var(--fade);
@@ -307,6 +327,128 @@ button {
 .label:focus-visible,
 .label.is-active {
   color: var(--ha);
+}
+
+/* ---------- Каталог галактик ---------- */
+
+.catalog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 45;
+  width: min(380px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--hairline);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  transform: translateX(-100%);
+  transition:
+    transform 0.5s var(--ease),
+    background-color var(--fade),
+    border-color var(--fade);
+}
+
+.catalog-open .catalog {
+  transform: none;
+}
+
+.catalog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--gutter) 24px 10px;
+}
+
+.catalog__list {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+}
+
+.catalog__item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  padding: 12px 0 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.catalog__name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 26px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.catalog__id {
+  grid-column: 1;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--plate-dim);
+}
+
+.catalog__dist {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--plate-dim);
+  text-align: right;
+}
+
+.catalog__ruler {
+  grid-column: 1 / -1;
+  height: 1px;
+  margin-top: 8px;
+  background: linear-gradient(90deg, var(--plate-faint) calc(var(--depth) * 100%), var(--hairline) 0);
+  position: relative;
+}
+
+.catalog__ruler::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: calc(var(--depth) * 100% - 2px);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--plate-dim);
+}
+
+.catalog__item:hover .catalog__name,
+.catalog__item:focus-visible .catalog__name {
+  color: var(--ha);
+}
+
+.catalog__item[aria-current='true'] .catalog__name {
+  color: var(--ha);
+}
+
+.catalog__item[aria-current='true'] .catalog__ruler::after {
+  background: var(--ha);
+  box-shadow: 0 0 8px var(--ha);
+}
+
+.catalog__note {
+  margin: 0;
+  padding: 14px 24px var(--gutter);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--plate-dim);
 }
 
 /* ---------- Кнопка и панель досье ---------- */
@@ -1085,7 +1227,7 @@ body[data-band='rosse'] .wheel__disc {
   }
 
   .title {
-    font-size: 56px;
+    font-size: min(56px, calc(var(--fit, 136) * 0.42px));
   }
 
   .lede {
@@ -1095,6 +1237,26 @@ body[data-band='rosse'] .wheel__disc {
 
   .dossier-toggle {
     padding: 8px 12px;
+  }
+
+  .catalog {
+    top: auto;
+    width: 100vw;
+    height: 74vh;
+    height: 74dvh;
+    border-right: 0;
+    border-top: 1px solid var(--hairline);
+    border-radius: 12px 12px 0 0;
+    transform: translateY(100%);
+  }
+
+  .brand__more {
+    display: none;
+  }
+
+  .brand::after {
+    content: '▾';
+    color: var(--plate);
   }
 
   .dossier {

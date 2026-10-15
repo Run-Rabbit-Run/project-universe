@@ -1,11 +1,13 @@
-// Режим «1845»: кадр превращается в карандашный рисунок на бумаге,
-// как зарисовка лорда Росса — первое изображение спиральной «туманности».
+// Исторические режимы.
+// uStyle = 0 — «1845»: карандашный рисунок на бумаге, как зарисовка лорда Росса;
+// uStyle = 1 — «1888»: чёрно-белая фотопластинка, как первые снимки Андромеды Айзека Робертса.
 
 export const SketchShader = {
   name: 'SketchShader',
   uniforms: {
     tDiffuse: { value: null },
     uAmount: { value: 0 },
+    uStyle: { value: 0 },
     uRes: { value: [1, 1] },
     uDpr: { value: 1 },
   },
@@ -19,6 +21,7 @@ export const SketchShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uAmount;
+    uniform float uStyle;
     uniform vec2 uRes;
     uniform float uDpr;
     varying vec2 vUv;
@@ -82,6 +85,17 @@ export const SketchShader = {
       vec3 col = mix(paper, graphite, ink * 0.82);
       vec2 q = vUv - 0.5;
       col *= 1.0 - dot(q, q) * 0.4;
+
+      if (uStyle > 0.5) {
+        // Фотопластинка XIX века чувствительна в основном к синему свету, зерниста и с виньеткой
+        float B = dot(mix(src, blur, 0.45), vec3(0.12, 0.33, 0.55));
+        float silver = smoothstep(0.0, 0.85, pow(B * 1.4, 0.7));
+        float fgrain = (vnoise(fc * 1.3) - 0.5) * 0.16 + (vnoise(fc * 0.37 + 5.0) - 0.5) * 0.08;
+        float plate = clamp(silver + fgrain * (0.4 + silver), 0.0, 1.0);
+        vec3 tint = mix(vec3(0.05, 0.045, 0.04), vec3(0.93, 0.9, 0.82), plate);
+        tint *= 1.0 - dot(q, q) * 1.1;
+        col = tint;
+      }
 
       gl_FragColor = vec4(mix(src, col, uAmount), 1.0);
     }

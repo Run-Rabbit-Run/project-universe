@@ -194,6 +194,7 @@ export class Viewer {
     this.bandTo.set(...band.weights);
     this.sketchFrom = this.sketch.uniforms.uAmount.value;
     this.sketchTo = band.sketch;
+    if (band.sketch) this.sketch.uniforms.uStyle.value = band.style ?? 0;
     this.bandT = instant ? 1 : 0;
     if (instant) this.applyBand(1);
   }

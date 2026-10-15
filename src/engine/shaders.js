@@ -21,6 +21,7 @@ export const pointsVertex = /* glsl */ `
   attribute vec3 aColor;
   attribute float aSize;
   attribute float aSeed;
+  attribute vec3 aNormal;
 
   uniform vec4 uBand;
   uniform vec3 uVis;
@@ -64,8 +65,10 @@ export const pointsVertex = /* glsl */ `
            + uHa * lum * vary * uBand.z
            + xCol * uBand.w;
 
-    if (uFacingMode != 0.0) {
-      float facing = abs(normalize(uCamPos - world.xyz).y);
+    // Помощники для вида с ребра видны, только когда их диск повёрнут к нам ребром.
+    // Точки без нормали (хвосты, облака) видны всегда.
+    if (uFacingMode != 0.0 && dot(aNormal, aNormal) > 0.25) {
+      float facing = abs(dot(normalize(uCamPos - world.xyz), aNormal));
       float f = smoothstep(0.08, 0.45, facing);
       c *= uFacingMode > 0.0 ? f : (1.0 - f);
     }
@@ -98,9 +101,11 @@ export const pointsFragment = /* glsl */ `
 export const planeVertex = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vWorld;
+  varying vec2 vLocal;
 
   void main() {
     vUv = uv;
+    vLocal = position.xz;
     vec4 w = modelMatrix * vec4(position, 1.0);
     vWorld = w.xyz;
     gl_Position = projectionMatrix * viewMatrix * w;
@@ -135,15 +140,17 @@ export const diskLightFragment = /* glsl */ `
   ${diskSample}
   uniform vec4 uBand;
   uniform vec3 uCamPos;
+  uniform vec3 uNormal;
   uniform float uWeight;
 
   varying vec2 vUv;
   varying vec3 vWorld;
+  varying vec2 vLocal;
 
   void main() {
     vec4 t = sampleDisk(vUv);
     vec4 d = t * t;
-    float detail = mix(1.0, 0.7 + 0.6 * diskDetail(vWorld.xz), uDetail);
+    float detail = mix(1.0, 0.7 + 0.6 * diskDetail(vLocal), uDetail);
     float old = d.r;
     float young = d.g * detail;
     float dust = d.b;
@@ -162,7 +169,7 @@ export const diskLightFragment = /* glsl */ `
              + sf * vec3(0.55, 0.35, 1.0) * 0.05;
 
     vec3 col = vis * uBand.x + ir * uBand.y + ha * uBand.z + xr * uBand.w;
-    float facing = abs(normalize(uCamPos - vWorld).y);
+    float facing = abs(dot(normalize(uCamPos - vWorld), uNormal));
     float fade = smoothstep(0.06, 0.4, facing);
     float edge = 1.0 - smoothstep(0.62, 0.95, length(vUv - 0.5) * 2.0);
     gl_FragColor = vec4(col * uWeight * fade * edge, 1.0);
@@ -175,18 +182,30 @@ export const diskDustFragment = /* glsl */ `
   ${diskSample}
   uniform vec4 uBand;
   uniform vec3 uCamPos;
+  uniform vec3 uNormal;
   uniform float uWeight;
   uniform float uStrength;
+  uniform vec4 uOcc;
 
   varying vec2 vUv;
   varying vec3 vWorld;
+  varying vec2 vLocal;
 
   void main() {
     float t = sampleDisk(vUv).b;
-    float dust = t * t * mix(1.0, 0.25 + 1.5 * diskDetail(vWorld.xz + 19.0), uDetail);
+    float dust = t * t * mix(1.0, 0.25 + 1.5 * diskDetail(vLocal + 19.0), uDetail);
     float absorb = uBand.x + uBand.z * 0.55 + uBand.y * 0.03 + uBand.w * 0.12;
-    float facing = abs(normalize(uCamPos - vWorld).y);
+    vec3 toCam = normalize(uCamPos - vWorld);
+    float facing = abs(dot(toCam, uNormal));
     float fade = smoothstep(0.06, 0.4, facing);
+    // Пыль позади яркого балджа почти не видна: его свет идёт к нам, минуя её.
+    // Поэтому тёмная полоса заметна только с ближней стороны ядра — как у Чёрного Глаза.
+    if (uOcc.w > 0.0) {
+      vec3 rel = vWorld - uOcc.xyz;
+      float behind = smoothstep(0.0, uOcc.w * 0.35, -dot(rel, toCam));
+      float inside = 1.0 - smoothstep(uOcc.w * 0.6, uOcc.w * 1.2, length(rel));
+      absorb *= 1.0 - 0.92 * behind * inside;
+    }
     float a = clamp(dust * uStrength, 0.0, 1.0) * absorb * fade * uWeight;
     gl_FragColor = vec4(vec3(0.8, 0.88, 0.97) * a, 1.0);
   }
