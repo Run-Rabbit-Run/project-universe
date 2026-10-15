@@ -203,6 +203,9 @@ async function main() {
   setPressedView('earth');
   viewer.flyTo(earth, { duration: reducedMotion ? 0 : 4.5 });
 
+  // Только для разработки: доступ к сцене из консоли браузера
+  if (import.meta.env.DEV) window.__atlas = { viewer };
+
 }
 
 main();

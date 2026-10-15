@@ -73,6 +73,8 @@ export class Viewer {
     this.timer = new THREE.Timer();
     this.timer.connect(document);
     this.listeners = new Set();
+    this.width = 1;
+    this.height = 1;
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -106,6 +108,9 @@ export class Viewer {
   resize() {
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
+    // Свёрнутое окно или скрытая вкладка дают нулевой размер: пропорции кадра стали бы NaN,
+    // и камера улетела бы «в никуда». Ждём следующего resize с настоящим размером.
+    if (!w || !h) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w, h, false);
@@ -150,8 +155,18 @@ export class Viewer {
     dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
     to.theta = from.theta + dTheta;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) duration = 0.01;
+    this.stopInertia();
     this.flight = { from, to, t0: performance.now(), duration: duration * 1000, locked };
     return new Promise((resolve) => (this.flight.resolve = resolve));
+  }
+
+  // Гасим остаточное вращение после жеста мышью, иначе после перелёта вид «доезжает» сам.
+  // У OrbitControls нет публичного метода для этого, поэтому обнуляем его внутренние накопители.
+  stopInertia() {
+    const c = this.controls;
+    c._sphericalDelta?.set(0, 0, 0);
+    c._panOffset?.set(0, 0, 0);
+    if ('_scale' in c) c._scale = 1;
   }
 
   stepFlight(now) {
@@ -165,8 +180,11 @@ export class Viewer {
     const theta = THREE.MathUtils.lerp(f.from.theta, f.to.theta, e);
     this.controls.target.copy(target);
     this.camera.position.setFromSpherical(new THREE.Spherical(radius, phi, theta)).add(target);
+    // Камера всё время смотрит на цель, поэтому галактика остаётся в центре кадра
+    this.camera.lookAt(target);
     if (k >= 1) {
       this.flight = null;
+      this.stopInertia();
       f.resolve?.();
     }
   }
