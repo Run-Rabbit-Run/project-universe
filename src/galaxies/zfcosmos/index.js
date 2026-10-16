@@ -56,7 +56,7 @@ const RECIPE = {
     },
     HYDE_DISK,
     // Встревоженный газ вокруг пары
-    { kind: 'spheroid', id: 'cgm', position: MID, count: 0, scale: 0.1, hagas: { count: 1500, scale: 8, size: 2.4, b: 0.012 } },
+    { kind: 'spheroid', id: 'cgm', position: MID, count: 0, scale: 0.1, hagas: { count: 450, scale: 8, size: 2.4, b: 0.04 } },
   ],
 };
 

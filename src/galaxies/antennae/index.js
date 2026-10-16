@@ -86,7 +86,7 @@ const RECIPE = {
       brightness: 0.7,
       young: { count: 4200, scale: 3.6, b: 0.32 },
       hii: { count: 950, scale: 3.3, size: 0.7, b: 0.3 },
-      dust: { count: 2600, scale: 3.6, size: 1.3, flat: 0.35, b: 0.3 },
+      dust: { count: 1300, scale: 3.6, size: 1.3, flat: 0.35, b: 0.5 },
     },
     tail('tail-n', TAIL_N),
     tail('tail-s', TAIL_S),

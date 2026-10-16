@@ -47,6 +47,7 @@ const app = {
   bands: [],
   bandId: 'visible',
   loadToken: 0,
+  pending: null,
 };
 
 // ---------- Ракурсы ----------
@@ -158,10 +159,12 @@ const bindToggle = (id, fn) => {
 bindToggle('toggle-structure', (on) => {
   labelVisibility.structure = on;
   app.labels?.setKindVisible('structure', on);
+  viewer.invalidate();
 });
 bindToggle('toggle-events', (on) => {
   labelVisibility.event = on;
   app.labels?.setKindVisible('event', on);
+  viewer.invalidate();
 });
 bindToggle('toggle-rotate', (on) => (viewer.controls.autoRotate = on));
 
@@ -177,6 +180,7 @@ const fmtDist = (kly) =>
 const offset = new THREE.Vector3();
 
 viewer.onFrame(() => {
+  app.objects?.updateVisibility(viewer.shared.uBand.value);
   app.labels?.update();
   offset.copy(viewer.camera.position).sub(viewer.controls.target);
   const dist = offset.length();
@@ -222,8 +226,19 @@ const catalogUi = createCatalog($('catalog-panel'), $('catalog-toggle'), catalog
 // ---------- Загрузка галактики ----------
 async function openGalaxy(id, { first = false } = {}) {
   const galaxy = galaxies[id] ?? galaxies[defaultGalaxy];
-  if (!first && galaxy === app.galaxy) return;
+  if (!first && galaxy === app.galaxy) {
+    // Вернулись к открытой галактике (например, кнопкой «Назад») — недогруженную отменяем
+    if (app.pending) {
+      app.loadToken++;
+      app.pending = null;
+      loader.classList.add('is-done');
+      if (location.hash.slice(1) !== galaxy.id) history.replaceState(null, '', `#${galaxy.id}`);
+    }
+    return;
+  }
+  if (app.pending === galaxy.id) return;
   const token = ++app.loadToken;
+  app.pending = galaxy.id;
   catalogUi.close();
   setDossier(false);
   showLoader(galaxy.loading ?? `Собираем галактику ${galaxy.name}`);
@@ -235,15 +250,19 @@ async function openGalaxy(id, { first = false } = {}) {
     fail('Не удалось собрать модель галактики. Обновите страницу.');
     throw err;
   }
-  // Пока считали, пользователь мог выбрать другую галактику
+  // Пока считали, пользователь мог выбрать другую галактику или вернуться к прежней
   if (token !== app.loadToken) return;
+  app.pending = null;
 
-  if (app.objects) {
-    viewer.scene.remove(app.objects.group);
-    app.objects.dispose();
-  }
+  const prev = app.objects;
   app.objects = buildGalaxyObjects(data, galaxy.scene, viewer.shared, viewer.renderer);
   viewer.add(app.objects.group);
+  if (prev) {
+    viewer.scene.remove(prev.group);
+    // Новые материалы получают шейдерные программы, пока старые их ещё держат, — без перекомпиляции
+    viewer.renderer.compile(viewer.scene, viewer.camera);
+    prev.dispose();
+  }
   app.galaxy = galaxy;
 
   app.hotspots = galaxy.hotspots(data.features);
@@ -265,9 +284,16 @@ async function openGalaxy(id, { first = false } = {}) {
 
   // Подлёт издалека к виду с Земли
   const earth = presetView(galaxy.views.earth);
+  viewer.setDistanceLimits(0, Infinity);
   viewer.setView({ target: earth.target.clone(), radius: earth.radius * 6, phi: earth.phi + 0.6, theta: earth.theta - 0.9 });
   setPressedView('earth');
   viewer.flyTo(earth, { duration: reducedMotion ? 0 : first ? 4.5 : 3.2 });
+  // Пределы зума — по ракурсам самой галактики, чтобы ни один ракурс не «отскакивал» после перелёта
+  const radii = [
+    ...Object.values(galaxy.views).map((p) => presetView(p).radius),
+    ...app.hotspots.map((h) => h.view.radius),
+  ];
+  viewer.setDistanceLimits(Math.min(...radii) * 0.25, Math.max(...radii, earth.radius * 4) * 1.3);
   loader.classList.add('is-done');
   body.classList.add('is-ready');
 }

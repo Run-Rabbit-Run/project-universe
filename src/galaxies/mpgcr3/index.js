@@ -21,7 +21,7 @@ const knot = (id, position, k) => ({
   scale: 0.05,
   young: { count: Math.round(5200 * k), scale: 0.09 * Math.sqrt(k), b: 0.2, color: [0.62, 0.78, 1.0] },
   hii: { count: Math.round(700 * k), scale: 0.26 * Math.sqrt(k), size: 0.11, b: 0.06 },
-  hagas: { count: Math.round(900 * k), scale: 0.7 * Math.sqrt(k), size: 0.5, b: 0.012 },
+  hagas: { count: Math.round(150 * k), scale: 0.7 * Math.sqrt(k), size: 0.5, b: 0.072 },
 });
 
 const RECIPE = {
@@ -31,7 +31,7 @@ const RECIPE = {
     knot('b', KNOT_B, 0.45),
     knot('c', KNOT_C, 0.3),
     // Протяжённое гало водорода вокруг
-    { kind: 'spheroid', id: 'halo', position: [0, 0, 0], count: 0, scale: 0.1, hagas: { count: 1300, scale: 2.6, size: 1.4, b: 0.003 } },
+    { kind: 'spheroid', id: 'halo', position: [0, 0, 0], count: 0, scale: 0.1, hagas: { count: 320, scale: 2.6, size: 1.4, b: 0.012 } },
   ],
 };
 

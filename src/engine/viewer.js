@@ -10,10 +10,14 @@ import { createBackground } from './background.js';
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
+// Выше 1,5 разница на глаз почти незаметна, а пикселей на HiDPI-экране становится вчетверо больше
+const MAX_PIXEL_RATIO = 1.5;
+
 export class Viewer {
   constructor(canvas) {
     this.canvas = canvas;
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    // Без 'high-performance': ноутбук не будит дискретную видеокарту ради страницы, которая чаще всего стоит на месте
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
     this.renderer.setClearColor(0x020308, 1);
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = 0.85;
@@ -46,6 +50,9 @@ export class Viewer {
       if (this.flight && !this.flight.locked) this.flight = null;
       this.onUserInteract?.();
     });
+    // Кадр перерисовывается только когда что-то изменилось
+    this.dirty = true;
+    this.controls.addEventListener('change', () => this.invalidate());
 
     this.background = createBackground(this.shared);
     this.scene.add(this.background);
@@ -79,13 +86,24 @@ export class Viewer {
     window.addEventListener('resize', () => this.resize());
   }
 
+  invalidate() {
+    this.dirty = true;
+  }
+
+  // Пределы приближения: у каждой галактики свои масштабы (MPG-CR3 — сотни св. лет, Хог — сотни тысяч)
+  setDistanceLimits(min, max) {
+    this.controls.minDistance = min;
+    this.controls.maxDistance = max;
+  }
+
   setRightInset(px) {
     this.insetTarget = px;
   }
 
+  // Возвращает true, пока сдвиг кадра ещё анимируется
   applyInset(dt) {
     if (Math.abs(this.insetTarget - this.inset) < 0.5) {
-      if (this.inset === this.insetTarget) return;
+      if (this.inset === this.insetTarget) return false;
       this.inset = this.insetTarget;
     } else {
       this.inset += (this.insetTarget - this.inset) * Math.min(1, dt * 7);
@@ -95,6 +113,7 @@ export class Viewer {
     } else {
       this.camera.clearViewOffset();
     }
+    return true;
   }
 
   add(object) {
@@ -111,7 +130,7 @@ export class Viewer {
     // Свёрнутое окно или скрытая вкладка дают нулевой размер: пропорции кадра стали бы NaN,
     // и камера улетела бы «в никуда». Ждём следующего resize с настоящим размером.
     if (!w || !h) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w, h, false);
     this.composer.setPixelRatio(dpr);
@@ -125,6 +144,7 @@ export class Viewer {
     this.sketch.uniforms.uDpr.value = dpr;
     this.width = w;
     this.height = h;
+    this.invalidate();
   }
 
   // Расстояние, на котором объект с полувысотой rv и полушириной rh целиком помещается в кадр.
@@ -145,6 +165,7 @@ export class Viewer {
     this.controls.target.copy(view.target);
     this.camera.position.setFromSpherical(new THREE.Spherical(view.radius, view.phi, view.theta)).add(view.target);
     this.controls.update();
+    this.invalidate();
   }
 
   // Плавный перелёт: цель — линейно, радиус — логарифмически, углы — по кратчайшей дуге.
@@ -197,6 +218,7 @@ export class Viewer {
     if (band.sketch) this.sketch.uniforms.uStyle.value = band.style ?? 0;
     this.bandT = instant ? 1 : 0;
     if (instant) this.applyBand(1);
+    this.invalidate();
   }
 
   applyBand(e) {
@@ -212,16 +234,23 @@ export class Viewer {
       this.timer.update();
       const dt = Math.min(this.timer.getDelta(), 0.1);
       const now = performance.now();
+      let changed = this.dirty;
       if (this.bandT < 1) {
         this.bandT = Math.min(1, this.bandT + dt / 0.9);
         this.applyBand(ease(this.bandT));
+        changed = true;
       }
       if (this.flight) {
         this.stepFlight(now);
-      } else {
-        this.controls.update(dt);
+        changed = true;
+      } else if (this.controls.update(dt)) {
+        // true, пока камера движется: жест, инерция, автовращение
+        changed = true;
       }
-      this.applyInset(dt);
+      if (this.applyInset(dt)) changed = true;
+      // Ничего не изменилось — видеокарта отдыхает
+      if (!changed) return;
+      this.dirty = false;
       this.background.position.copy(this.camera.position);
       this.camera.updateMatrixWorld();
       const dist = this.camera.position.distanceTo(this.controls.target);

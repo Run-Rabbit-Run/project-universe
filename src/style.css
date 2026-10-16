@@ -176,7 +176,6 @@ button {
   font-weight: 300;
   font-size: clamp(40px, min(8.6vw, calc(var(--fit, 136) * 1px)), 136px);
   line-height: 0.86;
-  overflow-wrap: anywhere;
   letter-spacing: -0.015em;
   color: var(--plate);
   transition: color var(--fade);

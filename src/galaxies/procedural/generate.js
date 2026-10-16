@@ -184,12 +184,15 @@ export function generateFromRecipe(recipe, { quality = 1, textureSize = 1024 } =
     const cnt = (k, base) => Math.round((raw.counts?.[k] ?? 1) * base * q * (raw.countScale ?? 1));
     const bright = D.brightness;
 
+    // За краем диска (1,2 радиуса) поле равно нулю — эти текселы не считаем, они уже нулевые
+    const edge2 = (D.radius * 1.2) ** 2;
     function bake(size, ext) {
       const data = new Uint8Array(size * size * 4);
       for (let j = 0; j < size; j++) {
         const y = -ext + ((j + 0.5) * 2 * ext) / size;
         for (let i = 0; i < size; i++) {
           const x = -ext + ((i + 0.5) * 2 * ext) / size;
+          if (x * x + y * y > edge2) continue;
           field.sample(x, y, tmp);
           const o = (j * size + i) * 4;
           data[o] = enc(tmp.old * 0.9 * bright);
@@ -297,7 +300,7 @@ export function generateFromRecipe(recipe, { quality = 1, textureSize = 1024 } =
     for (let n = 0; n < nGlow; n++) {
       const p = pick(0, 0.5);
       if (!p) break;
-      L.glow.push(F.toWorld(p[0], p[1], g() * D.thick), [1, 0.85, 0.68], 0.012 * bright, (1.4 + rand() * 2.2) * (D.radius / 30), rand(), F.normal);
+      L.glow.push(F.toWorld(p[0], p[1], g() * D.thick), [1, 0.85, 0.68], (raw.glowB ?? 0.012) * bright, (1.4 + rand() * 2.2) * (D.radius / 30), rand(), F.normal);
     }
 
     // Балдж

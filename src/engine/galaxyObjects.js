@@ -10,6 +10,11 @@ import {
 } from './shaders.js';
 
 const v3 = (a) => new THREE.Vector3(...(a ?? [0, 0, 0]));
+const sum3 = (a) => (a ? a[0] + a[1] + a[2] : 0);
+
+// Вклад объекта в каждый диапазон (видимый, ИК, Hα, рентген): по нему слой выключается,
+// если в текущем фильтре он ничего не рисует.
+const bandGains = (spec, defaultVis) => [sum3(spec.vis ?? defaultVis), sum3(spec.ir), sum3(spec.ha), sum3(spec.x)];
 
 // Слои по умолчанию — те же, что подобраны для Водоворота.
 // Порядок отрисовки важен: пыль гасит то, что нарисовано до неё.
@@ -27,18 +32,20 @@ export const DEFAULT_SCENE = {
       { y: 0.06, weight: 0.55 },
     ],
   },
+  // Звёзды (old, young) ограничены несколькими пикселями. Облачные слои (fade) — 120–256 px:
+  // крупнее облако не растёт, а гаснет, чтобы не перекрашивать весь экран сотни раз.
   layers: [
-    { name: 'glow', source: 'glow', order: 1.5, ir: [0.4, 0.55, 1.0], ha: [0.15, 0.15, 0.15], minPx: 2, maxPx: 900, soft: 2.4, facing: -1 },
+    { name: 'glow', source: 'glow', order: 1.5, ir: [0.4, 0.55, 1.0], ha: [0.15, 0.15, 0.15], minPx: 2, maxPx: 120, fade: true, soft: 2.4, facing: -1 },
     { name: 'old', source: 'old', order: 2, intensity: 0.75, ir: [0.4, 0.58, 1.0], ha: [0.32, 0.3, 0.3], minPx: 1.4, maxPx: 5, soft: 4.5 },
-    { name: 'dustAbsorb', source: 'dust', order: 5, absorb: true, nebula: 0.8, ha: [1.5, 1.7, 2.0], minPx: 2, maxPx: 900, soft: 2.2, facing: -1 },
-    { name: 'dustGlow', source: 'dust', order: 6, vis: [0, 0, 0], ir: [5.0, 1.6, 0.45], minPx: 2, maxPx: 900, soft: 2.2, facing: -1 },
+    { name: 'dustAbsorb', source: 'dust', order: 5, absorb: true, nebula: 0.8, ha: [1.5, 1.7, 2.0], minPx: 2, maxPx: 120, fade: true, soft: 2.2, facing: -1 },
+    { name: 'dustGlow', source: 'dust', order: 6, vis: [0, 0, 0], ir: [5.0, 1.6, 0.45], minPx: 2, maxPx: 120, fade: true, soft: 2.2, facing: -1 },
     { name: 'young', source: 'young', order: 7, intensity: 0.55, ir: [0.35, 0.5, 1.0], ha: [0.25, 0.24, 0.24], minPx: 1.4, maxPx: 6, soft: 4.5 },
-    { name: 'hii', source: 'hii', order: 8, intensity: 0.5, ir: [1.8, 1.15, 0.6], ha: [5.0, 0.55, 0.9], minPx: 1.8, maxPx: 900, soft: 3.6, nebula: 1 },
+    { name: 'hii', source: 'hii', order: 8, intensity: 0.5, ir: [1.8, 1.15, 0.6], ha: [5.0, 0.55, 0.9], minPx: 1.8, maxPx: 200, fade: true, soft: 3.6, nebula: 1 },
     // Газ, который светится почти только в линии Hα (хвост Медузы, облако MPG-CR3)
-    { name: 'hagas', source: 'hagas', order: 8.5, vis: [0.035, 0.035, 0.035], ir: [0.2, 0.08, 0.04], ha: [4.0, 0.35, 0.6], minPx: 2, maxPx: 900, soft: 2.2, nebula: 0.7 },
+    { name: 'hagas', source: 'hagas', order: 8.5, vis: [0.035, 0.035, 0.035], ir: [0.2, 0.08, 0.04], ha: [4.0, 0.35, 0.6], minPx: 2, maxPx: 256, fade: true, soft: 2.2, nebula: 0.7 },
     // Звёзды и облака, спрятанные пылью: в видимом свете их почти нет, в инфракрасном они горят
-    { name: 'obscured', source: 'obscured', order: 8.2, vis: [0.05, 0.035, 0.03], ir: [2.4, 1.1, 0.5], ha: [0.6, 0.06, 0.1], minPx: 1.8, maxPx: 900, soft: 3.6, nebula: 1 },
-    { name: 'xray', source: 'xray', order: 9, vis: [0, 0, 0], x: [1, 1, 1], xFromColor: 1, minPx: 1.8, maxPx: 900, soft: 3 },
+    { name: 'obscured', source: 'obscured', order: 8.2, vis: [0.05, 0.035, 0.03], ir: [2.4, 1.1, 0.5], ha: [0.6, 0.06, 0.1], minPx: 1.8, maxPx: 200, fade: true, soft: 3.6, nebula: 1 },
+    { name: 'xray', source: 'xray', order: 9, vis: [0, 0, 0], x: [1, 1, 1], xFromColor: 1, minPx: 1.8, maxPx: 220, fade: true, soft: 3 },
   ],
   billboards: [],
 };
@@ -98,6 +105,7 @@ function pointsMaterial(spec, shared) {
       uMinPx: { value: spec.minPx ?? 1.5 },
       uMaxPx: { value: spec.maxPx ?? 6 },
       uFacingMode: { value: spec.facing ?? 0 },
+      uFadeBig: { value: spec.fade ? 1 : 0 },
       uIntensity: { value: spec.intensity ?? 1 },
       uSoft: { value: spec.soft ?? 4 },
       uNebula: { value: spec.nebula ?? 0 },
@@ -199,6 +207,7 @@ export function buildGalaxyObjects(data, sceneConfig, shared, renderer) {
     const layer = data.layers[spec.source];
     if (!layer || layer.count === 0) continue;
     const points = new THREE.Points(pointsGeometry(layer, spec.facing), pointsMaterial(spec, shared));
+    points.userData.gains = bandGains(spec, [1, 1, 1]);
     points.renderOrder = spec.order;
     points.frustumCulled = false;
     group.add(points);
@@ -227,9 +236,20 @@ export function buildGalaxyObjects(data, sceneConfig, shared, renderer) {
         },
       }),
     );
+    mesh.userData.gains = bandGains(spec);
     mesh.renderOrder = spec.order ?? 3;
     mesh.frustumCulled = false;
     group.add(mesh);
+  }
+
+  // Слои с нулевым вкладом в текущем диапазоне не рисуем: рентгеновский газ в видимом свете,
+  // светящуюся пыль вне инфракрасного и т. п.
+  const banded = group.children.filter((o) => o.userData.gains);
+  function updateVisibility(band) {
+    for (const o of banded) {
+      const g = o.userData.gains;
+      o.visible = g[0] * band.x + g[1] * band.y + g[2] * band.z + g[3] * band.w > 1e-6;
+    }
   }
 
   // Освобождаем память видеокарты, когда пользователь переключает галактику
@@ -241,5 +261,5 @@ export function buildGalaxyObjects(data, sceneConfig, shared, renderer) {
     textures.forEach((t) => t.dispose());
   }
 
-  return { group, dispose };
+  return { group, dispose, updateVisibility };
 }

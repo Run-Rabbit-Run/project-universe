@@ -32,7 +32,9 @@ const DISK = {
   young: 0.8,
   hii: 0.9,
   dustStrength: 2.3,
-  counts: { old: 1.5, young: 1.3, clusters: 1.2, hii: 1.1, dust: 1.6, glow: 1.4 },
+  // Свечения меньше, но ярче: та же дымка при меньшей перерисовке
+  counts: { old: 1.5, young: 1.3, clusters: 1.2, hii: 1.1, dust: 1.6, glow: 0.85 },
+  glowB: 0.02,
   bulge: { scale: 0.9, max: 18, count: 42000, flat: 0.75 },
   xray: { hmxb: 120, lmxb: 220, ulx: 2, nucleus: 2, gas: 250 },
 };

@@ -68,13 +68,13 @@ const RECIPE = {
       points: HA_TAIL,
       width: [4, 18],
       falloff: 0.5,
-      counts: { hagas: 3200, hii: 220 },
+      counts: { hagas: 1400, hii: 220 },
       hagasSize: 7,
-      hagasB: 0.03,
+      hagasB: 0.068,
       hiiSize: 0.8,
     },
-    { kind: 'tail', id: 'x-tail', points: X_TAIL, width: [3, 14], falloff: 0.4, counts: { xgas: 2600 }, xgasSize: 8, xgasB: 0.05 },
-    { kind: 'tail', id: 'x-tail-2', points: X_TAIL_2, width: [3, 12], falloff: 0.6, counts: { xgas: 1500 }, xgasSize: 8, xgasB: 0.035 },
+    { kind: 'tail', id: 'x-tail', points: X_TAIL, width: [3, 14], falloff: 0.4, counts: { xgas: 1300 }, xgasSize: 8, xgasB: 0.1 },
+    { kind: 'tail', id: 'x-tail-2', points: X_TAIL_2, width: [3, 12], falloff: 0.6, counts: { xgas: 750 }, xgasSize: 8, xgasB: 0.07 },
   ],
 };
 

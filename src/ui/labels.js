@@ -37,7 +37,10 @@ export function createLabels(container, viewer, hotspots, { onSelect }) {
   });
   let activeId = null;
   // Ширину подписей меряем заново, когда догрузятся шрифты
-  document.fonts?.ready.then(() => items.forEach((it) => (it.width = 0)));
+  document.fonts?.ready.then(() => {
+    items.forEach((it) => (it.width = 0));
+    viewer.invalidate();
+  });
 
   function anchorFor(it, x, w) {
     if (!it.width) {
@@ -82,7 +85,11 @@ export function createLabels(container, viewer, hotspots, { onSelect }) {
       if (show) {
         const x = sx;
         const y = (-v.y * 0.5 + 0.5) * ht;
-        it.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+        const transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+        if (transform !== it.transform) {
+          it.el.style.transform = transform;
+          it.transform = transform;
+        }
         const anchor = anchorFor(it, x, w);
         if (anchor !== it.anchor) {
           it.anchor = anchor;

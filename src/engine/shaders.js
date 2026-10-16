@@ -34,6 +34,7 @@ export const pointsVertex = /* glsl */ `
   uniform float uMinPx;
   uniform float uMaxPx;
   uniform float uFacingMode;
+  uniform float uFadeBig;
   uniform float uIntensity;
   uniform vec3 uCamPos;
 
@@ -44,18 +45,22 @@ export const pointsVertex = /* glsl */ `
     vSeed = aSeed;
     vec4 world = modelMatrix * vec4(position, 1.0);
     vec4 mv = viewMatrix * world;
-    gl_Position = projectionMatrix * mv;
 
     float z = max(-mv.z, 0.001);
     float px = aSize * uScale / z;
     float minPx = uMinPx * uPixelRatio;
+    float maxPx = uMaxPx * uPixelRatio;
     float k = 1.0;
-    // Слишком мелкие точки не мерцают, а тускнеют: поток света сохраняется.
     if (px < minPx) {
+      // Слишком мелкие точки не мерцают, а тускнеют: поток света сохраняется.
       k = (px * px) / (minPx * minPx);
       px = minPx;
+    } else if (px > maxPx) {
+      // Облако у самой камеры гаснет, а не раздувается на весь экран:
+      // иначе тысячи таких спрайтов перекрашивают каждый пиксель сотни раз.
+      k = 1.0 - uFadeBig * smoothstep(maxPx, maxPx * 2.0, px);
+      px = maxPx;
     }
-    gl_PointSize = min(px, uMaxPx * uPixelRatio);
 
     float lum = dot(aColor, vec3(0.299, 0.587, 0.114));
     float vary = 0.55 + 0.9 * aSeed;
@@ -73,6 +78,15 @@ export const pointsVertex = /* glsl */ `
       c *= uFacingMode > 0.0 ? f : (1.0 - f);
     }
     vColor = c * k * uIntensity;
+
+    // Невидимую точку (не тот фильтр, диск повёрнут плашмя, облако погасло) не растеризуем вовсе
+    if (max(vColor.r, max(vColor.g, vColor.b)) < 1e-5) {
+      gl_PointSize = 0.0;
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      return;
+    }
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = px;
   }
 `;
 
@@ -150,7 +164,9 @@ export const diskLightFragment = /* glsl */ `
   void main() {
     vec4 t = sampleDisk(vUv);
     vec4 d = t * t;
-    float detail = mix(1.0, 0.7 + 0.6 * diskDetail(vLocal), uDetail);
+    // Шум мелкой структуры считаем, только когда камера близко
+    float detail = 1.0;
+    if (uDetail > 0.001) detail = mix(1.0, 0.7 + 0.6 * diskDetail(vLocal), uDetail);
     float old = d.r;
     float young = d.g * detail;
     float dust = d.b;
@@ -193,7 +209,8 @@ export const diskDustFragment = /* glsl */ `
 
   void main() {
     float t = sampleDisk(vUv).b;
-    float dust = t * t * mix(1.0, 0.25 + 1.5 * diskDetail(vLocal + 19.0), uDetail);
+    float dust = t * t;
+    if (uDetail > 0.001) dust *= mix(1.0, 0.25 + 1.5 * diskDetail(vLocal + 19.0), uDetail);
     float absorb = uBand.x + uBand.z * 0.55 + uBand.y * 0.03 + uBand.w * 0.12;
     vec3 toCam = normalize(uCamPos - vWorld);
     float facing = abs(dot(toCam, uNormal));
