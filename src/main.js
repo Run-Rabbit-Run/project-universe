@@ -167,6 +167,9 @@ bindToggle('toggle-events', (on) => {
   viewer.invalidate();
 });
 bindToggle('toggle-rotate', (on) => (viewer.controls.autoRotate = on));
+// Галактика вращается с самого начала, если система не просит обходиться без анимации
+viewer.controls.autoRotate = !reducedMotion;
+$('toggle-rotate').setAttribute('aria-pressed', String(!reducedMotion));
 
 // ---------- Масштаб и показания ----------
 const scaleBar = $('scale-bar');

@@ -67,20 +67,7 @@ export function createDossier(root, galaxy, hotspots, bands, { onSelect, onBand 
     signal.append(el('span', 'signal__dot'), el('span', null, 'Сигнала нет'));
     expeditions.append(signal, el('p', 'sec__note', galaxy.expeditions));
 
-    const sources = section('Источники');
-    const ul = el('ul', 'sources');
-    for (const [title, href] of galaxy.sources) {
-      const a = el('a', null, title);
-      a.href = href;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      const li = el('li');
-      li.append(a);
-      ul.append(li);
-    }
-    sources.append(ul);
-
-    root.append(passport, structure, events, chronicle, expeditions, sources);
+    root.append(passport, structure, events, chronicle, expeditions);
   }
 
   function renderCard(h) {

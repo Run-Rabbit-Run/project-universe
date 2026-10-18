@@ -6,7 +6,7 @@
 
 :root {
   color-scheme: dark;
-  --void: #04050a;
+  --void: #000;
   --plate: #e8e2d4;
   --plate-dim: #a29d92;
   --plate-faint: rgba(232, 226, 212, 0.4);
@@ -724,27 +724,6 @@ button {
   50% {
     background: var(--ha);
   }
-}
-
-.sources {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-  font-size: 13.5px;
-}
-
-.sources a {
-  color: var(--plate-dim);
-  text-decoration: underline;
-  text-decoration-color: var(--hairline);
-  text-underline-offset: 3px;
-}
-
-.sources a:hover {
-  color: var(--plate);
-  text-decoration-color: currentColor;
 }
 
 /* ---------- Карточка объекта ---------- */

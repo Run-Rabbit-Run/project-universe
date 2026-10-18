@@ -18,7 +18,8 @@ export class Viewer {
     this.canvas = canvas;
     // Без 'high-performance': ноутбук не будит дискретную видеокарту ради страницы, которая чаще всего стоит на месте
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-    this.renderer.setClearColor(0x020308, 1);
+    // Чистый чёрный: тон-маппинг вычитает из цвета наименьший канал, и любой «почти чёрный» с оттенком становится заметно цветным
+    this.renderer.setClearColor(0x000000, 1);
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = 0.85;
 
