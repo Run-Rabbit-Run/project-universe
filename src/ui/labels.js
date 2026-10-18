@@ -7,9 +7,11 @@ const FLIP_TO_EAST = { w: 'e', nw: 'ne', sw: 'se' };
 // Подписи точек интереса: HTML поверх холста, позиции пересчитываются из 3D в каждом кадре.
 export function createLabels(container, viewer, hotspots, { onSelect }) {
   const v = new THREE.Vector3();
-  const visibleKinds = { structure: true, event: true };
+  const visibleKinds = { structure: true, planet: true, event: true };
+  // Когда подписи налезают друг на друга, текст остаётся у более важной: строение, планета, вспышка
+  const RANK = { structure: 0, planet: 1, event: 2 };
 
-  const items = hotspots.map((h) => {
+  const items = [...hotspots].sort((a, b) => RANK[a.kind] - RANK[b.kind]).map((h) => {
     const el = document.createElement('button');
     el.type = 'button';
     el.className = `label label--${h.kind}`;
@@ -70,7 +72,7 @@ export function createLabels(container, viewer, hotspots, { onSelect }) {
     const w = viewer.width;
     const ht = viewer.height;
     const placed = [];
-    // Выбранная подпись важнее всех, строение важнее вспышек
+    // Выбранная подпись важнее всех
     const ordered = activeId ? [...items].sort((a, b) => (b.h.id === activeId) - (a.h.id === activeId)) : items;
     for (const it of ordered) {
       v.copy(it.pos).project(viewer.camera);

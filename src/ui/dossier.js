@@ -1,4 +1,6 @@
-// Досье: паспорт галактики, строение, вспышки, хроника — и карточка выбранного объекта.
+// Досье: паспорт галактики, планеты, строение, вспышки, хроника — и карточка выбранного объекта.
+
+import { showPlanet, planetThumbnail } from '../engine/planetView.js';
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -22,9 +24,9 @@ function section(title) {
 }
 
 export function createDossier(root, galaxy, hotspots, bands, { onSelect, onBand }) {
-  const kindLabel = { structure: 'Строение', event: 'Вспышка или источник' };
+  const kindLabel = { structure: 'Строение', event: 'Вспышка или источник', planet: 'Планета' };
 
-  function objectList(kind) {
+  function objectList(kind, thumbs) {
     const ul = el('ul', 'objects');
     for (const h of hotspots.filter((x) => x.kind === kind)) {
       const li = el('li');
@@ -34,6 +36,14 @@ export function createDossier(root, galaxy, hotspots, bands, { onSelect, onBand 
       const sub = el('span', 'objects__sub', h.facts?.[0]?.[1] ?? '');
       const go = el('span', 'objects__go', 'Показать');
       btn.append(name, sub, go);
+      const thumb = thumbs && h.look && planetThumbnail(h.look);
+      if (thumb) {
+        const img = el('img', 'objects__thumb');
+        img.src = thumb;
+        img.alt = '';
+        btn.classList.add('objects__item--thumb');
+        btn.prepend(img);
+      }
       btn.addEventListener('click', () => onSelect(h.id));
       li.append(btn);
       ul.append(li);
@@ -41,11 +51,15 @@ export function createDossier(root, galaxy, hotspots, bands, { onSelect, onBand 
     return ul;
   }
 
-  function renderOverview() {
+  // Миниатюры планет рисует отдельный WebGL-холст — заводим его, только когда досье открывают
+  function renderOverview({ thumbs = true } = {}) {
     root.replaceChildren();
 
     const passport = section('Паспорт');
     passport.append(factList(galaxy.passport));
+
+    const planets = section('Планеты');
+    planets.append(objectList('planet', thumbs));
 
     const structure = section('Строение');
     structure.append(objectList('structure'));
@@ -67,7 +81,7 @@ export function createDossier(root, galaxy, hotspots, bands, { onSelect, onBand 
     signal.append(el('span', 'signal__dot'), el('span', null, 'Сигнала нет'));
     expeditions.append(signal, el('p', 'sec__note', galaxy.expeditions));
 
-    root.append(passport, structure, events, chronicle, expeditions);
+    root.append(passport, planets, structure, events, chronicle, expeditions);
   }
 
   function renderCard(h) {
@@ -82,7 +96,15 @@ export function createDossier(root, galaxy, hotspots, bands, { onSelect, onBand 
     });
 
     card.append(back, el('p', 'eyebrow card__kicker', kindLabel[h.kind]), el('h2', 'card__title', h.title));
-    if (h.facts?.length) card.append(factList(h.facts));
+    let portrait = null;
+    if (h.look) {
+      portrait = el('figure', 'planet-view');
+      portrait.append(el('figcaption', 'planet-view__note', 'Облик — художественный образ'));
+      card.append(portrait);
+    }
+    // Вымышленные планеты помечены, чтобы их не спутали с настоящими находками
+    const facts = h.kind === 'planet' ? [...h.facts, ['Статус', h.status ?? 'придумана для атласа']] : h.facts;
+    if (facts?.length) card.append(factList(facts));
     for (const p of h.body) card.append(el('p', 'card__text', p));
 
     const band = bands.find((b) => b.id === h.band);
@@ -99,8 +121,9 @@ export function createDossier(root, galaxy, hotspots, bands, { onSelect, onBand 
     }
     root.append(card);
     root.scrollTop = 0;
+    if (portrait && !showPlanet(portrait, h.look)) portrait.remove();
   }
 
-  renderOverview();
+  renderOverview({ thumbs: false });
   return { renderOverview, renderCard };
 }

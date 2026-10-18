@@ -322,6 +322,34 @@ button {
   transform: rotate(45deg);
 }
 
+.label--planet {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+/* Планета — точка на орбите */
+.label--planet .label__dot {
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
+}
+
+.label--planet .label__dot::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 .label:hover,
 .label:focus-visible,
 .label.is-active {
@@ -648,6 +676,33 @@ button {
   transition: color 0.2s;
 }
 
+.objects__item--thumb {
+  grid-template-columns: 52px 1fr auto;
+  column-gap: 14px;
+}
+
+.objects__thumb {
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+}
+
+.objects__item--thumb .objects__name {
+  grid-column: 2;
+  align-self: end;
+}
+
+.objects__item--thumb .objects__sub {
+  grid-column: 2;
+  align-self: start;
+}
+
+.objects__item--thumb .objects__go {
+  grid-column: 3;
+}
+
 .objects__item:hover .objects__go,
 .objects__item:focus-visible .objects__go {
   color: var(--ha);
@@ -752,6 +807,34 @@ button {
   font-weight: 400;
   font-size: 42px;
   line-height: 0.95;
+}
+
+/* Окно с вращающейся планетой — во всю ширину панели */
+.planet-view {
+  position: relative;
+  margin: 0 -28px 20px;
+  aspect-ratio: 5 / 4;
+  background: #000;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.planet-view__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.planet-view__note {
+  position: absolute;
+  left: 28px;
+  bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(232, 226, 212, 0.45);
+  pointer-events: none;
 }
 
 .card .facts {
@@ -1255,6 +1338,14 @@ body[data-band='rosse'] .wheel__disc {
     padding: 0 20px 36px;
   }
 
+  .planet-view {
+    margin: 0 -20px 18px;
+  }
+
+  .planet-view__note {
+    left: 20px;
+  }
+
   .filter {
     bottom: calc(var(--gutter) + 92px);
   }
@@ -1327,10 +1418,14 @@ body[data-band='rosse'] .wheel__disc {
     justify-content: space-between;
   }
 
+  /* Четыре переключателя в одну строку даже на узком телефоне */
   .chip {
     flex: 1;
     justify-content: center;
-    padding: 7px 6px;
+    gap: 5px;
+    padding: 7px 4px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
   }
 }
 

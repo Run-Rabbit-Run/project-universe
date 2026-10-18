@@ -147,7 +147,7 @@ function buildWheel(galaxy) {
 }
 
 // ---------- Подписи ----------
-const labelVisibility = { structure: true, event: true };
+const labelVisibility = { structure: true, planet: true, event: true };
 const bindToggle = (id, fn) => {
   const btn = $(id);
   btn.addEventListener('click', () => {
@@ -159,6 +159,11 @@ const bindToggle = (id, fn) => {
 bindToggle('toggle-structure', (on) => {
   labelVisibility.structure = on;
   app.labels?.setKindVisible('structure', on);
+  viewer.invalidate();
+});
+bindToggle('toggle-planets', (on) => {
+  labelVisibility.planet = on;
+  app.labels?.setKindVisible('planet', on);
   viewer.invalidate();
 });
 bindToggle('toggle-events', (on) => {
@@ -268,12 +273,12 @@ async function openGalaxy(id, { first = false } = {}) {
   }
   app.galaxy = galaxy;
 
-  app.hotspots = galaxy.hotspots(data.features);
+  const planets = (galaxy.planets ?? []).map((p) => ({ ...p, kind: 'planet' }));
+  app.hotspots = [...galaxy.hotspots(data.features), ...planets];
   app.byId = Object.fromEntries(app.hotspots.map((h) => [h.id, h]));
   $('labels').replaceChildren();
   app.labels = createLabels($('labels'), viewer, app.hotspots, { onSelect: select });
-  app.labels.setKindVisible('structure', labelVisibility.structure);
-  app.labels.setKindVisible('event', labelVisibility.event);
+  for (const [kind, on] of Object.entries(labelVisibility)) app.labels.setKindVisible(kind, on);
 
   showMasthead(galaxy);
   buildViews(galaxy);
